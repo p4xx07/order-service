@@ -1,0 +1,1 @@
+wire deps/wire.go

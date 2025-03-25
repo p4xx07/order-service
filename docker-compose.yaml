@@ -1,0 +1,52 @@
+services:
+
+  db:
+    image: mariadb:11.4
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_USER: user
+      MYSQL_PASSWORD: password
+      MYSQL_DATABASE: test
+    volumes:
+      - ./compose/db_data:/var/lib/mysql
+    ports:
+      - "3306:3306"
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      start_period: 10s
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  meilisearch:
+    image: getmeili/meilisearch:v1.12
+    volumes:
+      - ./compose/data.ms:/data.ms
+    ports:
+      - "7700:7700"
+
+  redis:
+      image: redis:7.2.4
+      ports:
+        - "6379:6379"
+      environment:
+        REDIS_PORT: 6379
+        ALLOW_EMPTY_PASSWORD: yes
+
+  order-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    platform: linux/amd64
+    container_name: order-service
+    env_file:
+      - .env
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      meilisearch:
+        condition: service_started
