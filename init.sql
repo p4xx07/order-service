@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS users (
 );
 
 -- Inserting sample user data
-INSERT INTO users (name, email, password) VALUES
+INSERT INTO users (name, email) VALUES
 ('John Doe', 'john.doe@example.com' ),
 ('Jane Smith', 'jane.smith@example.com'),
 ('Emily Johnson', 'emily.johnson@example.com'),
