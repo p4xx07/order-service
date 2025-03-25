@@ -12,6 +12,7 @@ type IStore interface {
 	Update(orderID uint, order *Order) error
 	Delete(orderID uint) error
 	BeginTransaction() *gorm.DB
+	Transaction(f func(tx *gorm.DB) error) error
 }
 
 type store struct {
@@ -62,4 +63,8 @@ func (s *store) Delete(orderID uint) error {
 
 func (s *store) BeginTransaction() *gorm.DB {
 	return s.db.Begin()
+}
+
+func (s *store) Transaction(f func(tx *gorm.DB) error) error {
+	return s.db.Transaction(f)
 }

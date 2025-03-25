@@ -28,3 +28,15 @@ type OrderItem struct {
 	Quantity  int     `gorm:"type:int;not null"`
 	Price     float64 `gorm:"type:decimal(10,2);not null"`
 }
+
+func NewItems(items []orderItemRequest) []OrderItem {
+	response := make([]OrderItem, len(items))
+	for i, item := range items {
+		response[i] = OrderItem{
+			ProductID: item.ProductID,
+			Quantity:  item.Quantity,
+		}
+	}
+
+	return response
+}

@@ -10,7 +10,7 @@ import (
 )
 
 type IService interface {
-	Create(request postRequest) (uint, error)
+	Create(request postRequest) (*createOrderResponse, error)
 	Update(orderID uint, request putRequest) error
 	List(from, to time.Time, name, description string) ([]OrderResponse, error)
 	Get(orderID uint) (*OrderResponse, error)
@@ -53,27 +53,31 @@ func (s *service) Get(orderID uint) (*OrderResponse, error) {
 
 func (s *service) Delete(orderID uint) error {
 	return s.store.
-		BeginTransaction().
 		Transaction(func(tx *gorm.DB) error {
 			var order Order
 			if err := tx.Preload("Items").First(&order, orderID).Error; err != nil {
 				if errors.Is(err, gorm.ErrRecordNotFound) {
+					s.logger.Warnw("order not found", "orderID", orderID)
 					return errors.New("order not found")
 				}
+				s.logger.Errorw("error deleting order", "error", err, "orderID", orderID)
 				return err
 			}
 
 			for _, item := range order.Items {
 				if err := s.inventoryService.AdjustStock(item.ProductID, item.Quantity); err != nil {
+					s.logger.Errorw("error adjusting stock", "error", err, "orderID", orderID)
 					return err
 				}
 			}
 
 			if err := tx.Where("order_id = ?", order.ID).Delete(&OrderItem{}).Error; err != nil {
+				s.logger.Errorw("error deleting items", "error", err, "orderID", orderID)
 				return err
 			}
 
 			if err := tx.Delete(&order).Error; err != nil {
+				s.logger.Errorw("error deleting order", "error", err, "orderID", orderID)
 				return err
 			}
 
@@ -81,7 +85,7 @@ func (s *service) Delete(orderID uint) error {
 		})
 }
 
-func (s *service) Create(request postRequest) (uint, error) {
+func (s *service) Create(request postRequest) (*createOrderResponse, error) {
 	tx := s.store.BeginTransaction()
 	defer func() {
 		if r := recover(); r != nil {
@@ -92,41 +96,52 @@ func (s *service) Create(request postRequest) (uint, error) {
 	for _, item := range request.Items {
 		if err := s.inventoryService.AdjustStock(item.ProductID, -item.Quantity); err != nil {
 			tx.Rollback()
-			return 0, err
+			s.logger.Errorw("error adjusting stock", "error", err)
+			return nil, err
 		}
 	}
 
-	order := NewOrder(request.UserID, request.Items)
+	items := NewItems(request.Items)
+	order := NewOrder(request.UserID, items)
 	if err := s.store.Create(order); err != nil {
 		tx.Rollback()
-		return 0, err
+		s.logger.Errorw("error creating order", "error", err)
+		return nil, err
 	}
 
 	commit := tx.Commit()
 	if err := commit.Error; err != nil {
-		return 0, err
+		s.logger.Errorw("error committing order", "error", err)
+		return nil, err
 	}
 
-	return order.ID, nil
+	return &createOrderResponse{OrderID: order.ID}, nil
 }
 
 func (s *service) Update(orderID uint, request putRequest) error {
 	return s.store.
-		BeginTransaction().
 		Transaction(func(tx *gorm.DB) error {
 			var existingOrder Order
 			if err := tx.Preload("Items").First(&existingOrder, orderID).Error; err != nil {
 				if errors.Is(err, gorm.ErrRecordNotFound) {
+					s.logger.Warnw("order not found", "orderID", orderID)
 					return errors.New("order not found")
 				}
+				s.logger.Errorw("error getting order", "error", err, "orderID", orderID)
 				return err
 			}
 
-			if err := tx.Model(&existingOrder).Updates(&request.UpdatedOrder).Error; err != nil {
+			if err := tx.Model(&existingOrder).Update("updated_at", time.Now().UTC()).Error; err != nil {
+				s.logger.Errorw("error updating order", "error", err)
 				return err
 			}
 
-			if err := s.updateOrderItems(tx, &existingOrder, request.UpdatedItems); err != nil {
+			updatedItems := make([]OrderItem, len(request.UpdatedItems))
+			for i, item := range request.UpdatedItems {
+				updatedItems[i] = item.ToStore(existingOrder.ID)
+			}
+			if err := s.updateOrderItems(tx, &existingOrder, updatedItems); err != nil {
+				s.logger.Errorw("error updating order", "error", err)
 				return err
 			}
 
@@ -151,6 +166,7 @@ func (s *service) updateOrderItems(tx *gorm.DB, existingOrder *Order, updatedIte
 		}
 
 		if err := s.inventoryService.AdjustStock(updatedItem.ProductID, -quantityChange); err != nil {
+			s.logger.Errorw("error adjusting stock", err)
 			return err
 		}
 
@@ -160,16 +176,19 @@ func (s *service) updateOrderItems(tx *gorm.DB, existingOrder *Order, updatedIte
 	for productID, oldItem := range existingMap {
 		if !processed[productID] {
 			if err := s.inventoryService.AdjustStock(productID, +oldItem.Quantity); err != nil {
+				s.logger.Errorw("error adjusting stock", err)
 				return err
 			}
 		}
 	}
 
 	if err := tx.Where("order_id = ?", existingOrder.ID).Delete(&OrderItem{}).Error; err != nil {
+		s.logger.Errorw("error deleting order", err)
 		return err
 	}
 	if len(updatedItems) > 0 {
 		if err := tx.Create(&updatedItems).Error; err != nil {
+			s.logger.Errorw("error deleting order", err)
 			return err
 		}
 	}

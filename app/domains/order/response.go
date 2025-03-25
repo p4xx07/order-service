@@ -28,3 +28,7 @@ func ToArrayResponse(orders []Order) []OrderResponse {
 	}
 	return responses
 }
+
+type createOrderResponse struct {
+	OrderID uint `json:"order_id"`
+}

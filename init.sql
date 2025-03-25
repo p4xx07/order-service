@@ -38,15 +38,15 @@ INSERT INTO products (name, description, price, category) VALUES
 ('Desk Chair', 'Comfortable ergonomic chair for home office', 200.00, 'Furniture');
 
 -- Creating the inventory table
-CREATE TABLE IF NOT EXISTS inventory (
+CREATE TABLE IF NOT EXISTS inventories (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     product_id BIGINT UNSIGNED,
-    quantity INT NOT NULL,
+    stock BIGINT NOT NULL,
     FOREIGN KEY (product_id) REFERENCES products(id)
 );
 
 -- Inserting sample inventory data
-INSERT INTO inventory (product_id, quantity) VALUES
+INSERT INTO inventories (product_id, stock) VALUES
 (1, 50),  -- Laptop
 (2, 100), -- Smartphone
 (3, 200), -- Wireless Mouse
