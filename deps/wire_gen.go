@@ -30,8 +30,12 @@ func InjectApp(config *configuration.Configuration, logger *zap.SugaredLogger) (
 		return nil, err
 	}
 	iStore := order.NewStore(db)
+	client, err := InitRedisClient(config)
+	if err != nil {
+		return nil, err
+	}
 	inventoryIStore := inventory.NewStore(db)
-	iService := inventory.NewService(inventoryIStore, config, logger)
+	iService := inventory.NewService(client, inventoryIStore, config, logger)
 	orderIService := order.NewService(config, logger, iStore, iService)
 	iHandler := order.NewHandler(orderIService, logger)
 	appApp := &app.App{
@@ -61,7 +65,7 @@ func ConnectDB(configuration2 *configuration.Configuration) (*gorm.DB, error) {
 
 func InitRedisClient(configuration2 *configuration.Configuration) (*redis.Client, error) {
 	client := redis.NewClient(&redis.Options{
-		Addr:     configuration2.RedisHost,
+		Addr:     configuration2.RedisHost + ":" + configuration2.RedisPort,
 		Password: configuration2.RedisPassword,
 		DB:       configuration2.RedisDatabase,
 	})

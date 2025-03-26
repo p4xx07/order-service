@@ -16,6 +16,7 @@ type Configuration struct {
 	DatabaseName     string `env:"DATABASE_NAME"`
 
 	RedisHost     string `env:"REDIS_HOST"`
+	RedisPort     string `env:"REDIS_PORT"`
 	RedisPassword string `env:"REDIS_PASSWORD"`
 	RedisDatabase int    `env:"REDIS_DATABASE"`
 }

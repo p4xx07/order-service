@@ -22,7 +22,7 @@ import (
 
 func InjectApp(config *configuration.Configuration, logger *zap.SugaredLogger) (*app.App, error) {
 	wire.Build(
-		//InitRedisClient,
+		InitRedisClient,
 
 		// handlers
 		order.NewHandler,
@@ -67,7 +67,7 @@ func ConnectDB(configuration *configuration.Configuration) (*gorm.DB, error) {
 
 func InitRedisClient(configuration *configuration.Configuration) (*redis.Client, error) {
 	client := redis.NewClient(&redis.Options{
-		Addr:     configuration.RedisHost,
+		Addr:     configuration.RedisHost + ":" + configuration.RedisPort,
 		Password: configuration.RedisPassword,
 		DB:       configuration.RedisDatabase,
 	})
