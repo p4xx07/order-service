@@ -21,6 +21,8 @@ services:
 
   meilisearch:
     image: getmeili/meilisearch:v1.12
+    environment:
+      MEILI_MASTER_KEY: a-ArzKFISr1izZ5Ib_zqhIfWGU6x1Vxv4CnaGXFDJ-I
     volumes:
       - ./compose/data.ms:/data.ms
     ports:

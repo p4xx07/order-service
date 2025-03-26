@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/google/wire"
+	"github.com/meilisearch/meilisearch-go"
 	"github.com/p4xx07/order-service/app"
 	"github.com/p4xx07/order-service/app/domains/inventory"
 	"github.com/p4xx07/order-service/app/domains/order"
@@ -22,6 +23,7 @@ import (
 
 func InjectApp(config *configuration.Configuration, logger *zap.SugaredLogger) (*app.App, error) {
 	wire.Build(
+		//InitMeiliSearchClient,
 		InitRedisClient,
 
 		// handlers
@@ -78,5 +80,17 @@ func InitRedisClient(configuration *configuration.Configuration) (*redis.Client,
 	}
 
 	fmt.Println("Redis connected successfully")
+	return client, nil
+}
+
+func InitMeiliSearchClient(configuration *configuration.Configuration) (meilisearch.ServiceManager, error) {
+	host := fmt.Sprintf("%s:%d", configuration.MeiliSearchHost, configuration.MeiliSearchPort)
+	client := meilisearch.New(host, meilisearch.WithAPIKey(configuration.MeiliSearchMasterKey))
+	index := client.Index("orders")
+	sortable := []string{"created_at"}
+	_, err := index.UpdateSortableAttributes(&sortable)
+	if err != nil {
+		return nil, err
+	}
 	return client, nil
 }

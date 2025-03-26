@@ -15,10 +15,13 @@ type Configuration struct {
 	DatabasePort     string `env:"DATABASE_PORT"`
 	DatabaseName     string `env:"DATABASE_NAME"`
 
-	RedisHost     string `env:"REDIS_HOST"`
-	RedisPort     string `env:"REDIS_PORT"`
-	RedisPassword string `env:"REDIS_PASSWORD"`
-	RedisDatabase int    `env:"REDIS_DATABASE"`
+	RedisHost            string `env:"REDIS_HOST"`
+	RedisPort            string `env:"REDIS_PORT"`
+	RedisPassword        string `env:"REDIS_PASSWORD"`
+	RedisDatabase        int    `env:"REDIS_DATABASE"`
+	MeiliSearchHost      string `env:"MEILISEARCH_HOST"`
+	MeiliSearchPort      int    `env:"MEILISEARCH_PORT"`
+	MeiliSearchMasterKey string `env:"MEILISEARCH_MASTER_KEY"`
 }
 
 func GetEnvConfig() (*Configuration, error) {

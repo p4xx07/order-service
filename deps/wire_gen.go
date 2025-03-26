@@ -9,6 +9,7 @@ package deps
 import (
 	"context"
 	"fmt"
+	"github.com/meilisearch/meilisearch-go"
 	"github.com/p4xx07/order-service/app"
 	"github.com/p4xx07/order-service/app/domains/inventory"
 	"github.com/p4xx07/order-service/app/domains/order"
@@ -75,5 +76,17 @@ func InitRedisClient(configuration2 *configuration.Configuration) (*redis.Client
 		return nil, err
 	}
 	fmt.Println("Redis connected successfully")
+	return client, nil
+}
+
+func InitMeiliSearchClient(configuration2 *configuration.Configuration) (meilisearch.ServiceManager, error) {
+	host := fmt.Sprintf("%s:%d", configuration2.MeiliSearchHost, configuration2.MeiliSearchPort)
+	client := meilisearch.New(host, meilisearch.WithAPIKey(configuration2.MeiliSearchMasterKey))
+	index := client.Index("orders")
+	sortable := []string{"created_at"}
+	_, err := index.UpdateSortableAttributes(&sortable)
+	if err != nil {
+		return nil, err
+	}
 	return client, nil
 }

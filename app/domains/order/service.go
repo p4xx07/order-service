@@ -12,7 +12,7 @@ import (
 type IService interface {
 	Create(request postRequest) (*createOrderResponse, error)
 	Update(orderID uint, request putRequest) error
-	List(from, to time.Time, name, description string) ([]OrderResponse, error)
+	List(from, to time.Time, name, description string, limit, offset int64) ([]OrderResponse, error)
 	Get(orderID uint) (*OrderResponse, error)
 	Delete(orderID uint) error
 }
@@ -28,7 +28,7 @@ func NewService(configuration *configuration.Configuration, logger *zap.SugaredL
 	return &service{configuration: configuration, logger: logger, store: store, inventoryService: inventoryService}
 }
 
-func (s *service) List(from, to time.Time, name, description string) ([]OrderResponse, error) {
+func (s *service) List(from, to time.Time, name, description string, limit, offset int64) ([]OrderResponse, error) {
 	orders, err := s.store.List(from, to, name, description)
 	if err != nil {
 		return nil, err
