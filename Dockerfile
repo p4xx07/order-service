@@ -17,7 +17,6 @@ FROM phusion/baseimage:focal-1.2.0
 WORKDIR /app
 
 COPY --from=build_base /go/src/app/order-service /app/order-service
-COPY --from=build_base /go/src/app/.env /app/.env
 
 EXPOSE 8080
 CMD ["./order-service"]
