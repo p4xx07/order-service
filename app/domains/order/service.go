@@ -1,20 +1,20 @@
 package order
 
 import (
-	"errors"
+	"context"
+	"fmt"
 	"github.com/p4xx07/order-service/app/domains/inventory"
 	"github.com/p4xx07/order-service/configuration"
+	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
-	"gorm.io/gorm"
 	"time"
 )
 
 type IService interface {
-	Create(request postRequest) (*createOrderResponse, error)
-	Update(orderID uint, request putRequest) error
-	List(from, to time.Time, name, description string, limit, offset int64) ([]OrderResponse, error)
-	Get(orderID uint) (*OrderResponse, error)
-	Delete(orderID uint) error
+	Get(ctx context.Context, orderID uint) (*Order, error)
+	Create(ctx context.Context, request PostRequest) (*CreateOrderResponse, error)
+	Update(ctx context.Context, request PutRequest) error
+	Delete(ctx context.Context, id uint) error
 }
 
 type service struct {
@@ -22,176 +22,218 @@ type service struct {
 	logger           *zap.SugaredLogger
 	store            IStore
 	inventoryService inventory.IService
+	redisClient      *redis.Client
 }
 
-func NewService(configuration *configuration.Configuration, logger *zap.SugaredLogger, store IStore, inventoryService inventory.IService) IService {
-	return &service{configuration: configuration, logger: logger, store: store, inventoryService: inventoryService}
+func NewService(redisClient *redis.Client, configuration *configuration.Configuration, logger *zap.SugaredLogger, store IStore, inventoryService inventory.IService) IService {
+	return &service{redisClient: redisClient, configuration: configuration, logger: logger, store: store, inventoryService: inventoryService}
 }
 
-func (s *service) List(from, to time.Time, name, description string, limit, offset int64) ([]OrderResponse, error) {
-	orders, err := s.store.List(from, to, name, description)
+func (s *service) Create(ctx context.Context, request PostRequest) (*CreateOrderResponse, error) {
+	productIDs := make([]uint, len(request.Items))
+	for i, item := range request.Items {
+		productIDs[i] = item.ProductID
+	}
+
+	inventories, err := s.inventoryService.GetMultiple(ctx, productIDs)
 	if err != nil {
+		s.logger.Errorw("error getting inventory", "error", err)
 		return nil, err
 	}
 
-	response := ToArrayResponse(orders)
+	var lockedProducts []string
+	for _, item := range request.Items {
+		redisKey := s.getLockProductKey(item.ProductID)
+		lock := s.redisClient.SetNX(ctx, redisKey, "locked", 5*time.Second)
+		if !lock.Val() {
+			s.logger.Errorw("stock update in progress", "productID", item.ProductID)
+			return nil, fmt.Errorf("stock update in progress for product %d", item.ProductID)
+		}
+		lockedProducts = append(lockedProducts, redisKey)
 
-	return response, nil
-}
-
-func (s *service) Get(orderID uint) (*OrderResponse, error) {
-	order, err := s.store.Get(orderID)
-	if err != nil {
-		s.logger.Errorw("error getting order", "error", err, "orderID", orderID)
-		return nil, err
+		if inventories[item.ProductID].Stock < item.Quantity {
+			s.logger.Errorw("stock update in progress for product %d", item.ProductID)
+			return nil, fmt.Errorf("not enough stock for product %d", item.ProductID)
+		}
 	}
 
-	response := ToResponse(*order)
-
-	return &response, nil
-}
-
-func (s *service) Delete(orderID uint) error {
-	return s.store.
-		Transaction(func(tx *gorm.DB) error {
-			var order Order
-			if err := tx.Preload("Items").First(&order, orderID).Error; err != nil {
-				if errors.Is(err, gorm.ErrRecordNotFound) {
-					s.logger.Warnw("order not found", "orderID", orderID)
-					return errors.New("order not found")
-				}
-				s.logger.Errorw("error deleting order", "error", err, "orderID", orderID)
-				return err
-			}
-
-			for _, item := range order.Items {
-				if err := s.inventoryService.AdjustStock(item.ProductID, item.Quantity); err != nil {
-					s.logger.Errorw("error adjusting stock", "error", err, "orderID", orderID)
-					return err
-				}
-			}
-
-			if err := tx.Where("order_id = ?", order.ID).Delete(&OrderItem{}).Error; err != nil {
-				s.logger.Errorw("error deleting items", "error", err, "orderID", orderID)
-				return err
-			}
-
-			if err := tx.Delete(&order).Error; err != nil {
-				s.logger.Errorw("error deleting order", "error", err, "orderID", orderID)
-				return err
-			}
-
-			return nil
-		})
-}
-
-func (s *service) Create(request postRequest) (*createOrderResponse, error) {
-	tx := s.store.BeginTransaction()
 	defer func() {
-		if r := recover(); r != nil {
-			tx.Rollback()
+		for _, key := range lockedProducts {
+			s.redisClient.Del(ctx, key)
 		}
 	}()
 
+	updates := map[uint]int{}
 	for _, item := range request.Items {
-		if err := s.inventoryService.AdjustStock(item.ProductID, -item.Quantity); err != nil {
-			tx.Rollback()
-			s.logger.Errorw("error adjusting stock", "error", err)
-			return nil, err
-		}
+		updates[item.ProductID] = item.Quantity
+	}
+
+	if err := s.inventoryService.DecreaseStockBulk(ctx, updates); err != nil {
+		s.logger.Errorw("failed to decrease stock bulk", "error", err)
+		return nil, err
 	}
 
 	items := NewItems(request.Items)
 	order := NewOrder(request.UserID, items)
-	if err := s.store.Create(order); err != nil {
-		tx.Rollback()
-		s.logger.Errorw("error creating order", "error", err)
+	err = s.store.Create(ctx, order)
+	if err != nil {
+		s.logger.Errorw("failed to store order", "error", err)
 		return nil, err
 	}
 
-	commit := tx.Commit()
-	if err := commit.Error; err != nil {
-		s.logger.Errorw("error committing order", "error", err)
-		return nil, err
+	return &CreateOrderResponse{ID: order.ID}, nil
+}
+
+func (s *service) Update(ctx context.Context, request PutRequest) error {
+	existingOrder, err := s.store.Get(ctx, request.ID)
+	if err != nil {
+		s.logger.Errorw("error getting existing order", "error", err, "id", request.ID)
+		return fmt.Errorf("order not found: %w", err)
 	}
 
-	return &createOrderResponse{OrderID: order.ID}, nil
-}
-
-func (s *service) Update(orderID uint, request putRequest) error {
-	return s.store.
-		Transaction(func(tx *gorm.DB) error {
-			var existingOrder Order
-			if err := tx.Preload("Items").First(&existingOrder, orderID).Error; err != nil {
-				if errors.Is(err, gorm.ErrRecordNotFound) {
-					s.logger.Warnw("order not found", "orderID", orderID)
-					return errors.New("order not found")
-				}
-				s.logger.Errorw("error getting order", "error", err, "orderID", orderID)
-				return err
-			}
-
-			if err := tx.Model(&existingOrder).Update("updated_at", time.Now().UTC()).Error; err != nil {
-				s.logger.Errorw("error updating order", "error", err)
-				return err
-			}
-
-			updatedItems := make([]OrderItem, len(request.UpdatedItems))
-			for i, item := range request.UpdatedItems {
-				updatedItems[i] = item.ToStore(existingOrder.ID)
-			}
-			if err := s.updateOrderItems(tx, &existingOrder, updatedItems); err != nil {
-				s.logger.Errorw("error updating order", "error", err)
-				return err
-			}
-
-			return nil
-		})
-}
-
-func (s *service) updateOrderItems(tx *gorm.DB, existingOrder *Order, updatedItems []OrderItem) error {
-	existingMap := make(map[uint]OrderItem)
+	productIDs := make(map[uint]struct{})
 	for _, item := range existingOrder.Items {
-		existingMap[item.ProductID] = item
+		productIDs[item.ProductID] = struct{}{}
+	}
+	for _, item := range request.Items {
+		productIDs[item.ProductID] = struct{}{}
 	}
 
-	processed := make(map[uint]bool)
-
-	for _, updatedItem := range updatedItems {
-		existingItem, exists := existingMap[updatedItem.ProductID]
-		quantityChange := updatedItem.Quantity
-
-		if exists {
-			quantityChange = updatedItem.Quantity - existingItem.Quantity
-		}
-
-		if err := s.inventoryService.AdjustStock(updatedItem.ProductID, -quantityChange); err != nil {
-			s.logger.Errorw("error adjusting stock", err)
-			return err
-		}
-
-		processed[updatedItem.ProductID] = true
+	var ids []uint
+	for id := range productIDs {
+		ids = append(ids, id)
 	}
 
-	for productID, oldItem := range existingMap {
-		if !processed[productID] {
-			if err := s.inventoryService.AdjustStock(productID, +oldItem.Quantity); err != nil {
-				s.logger.Errorw("error adjusting stock", err)
-				return err
-			}
-		}
-	}
-
-	if err := tx.Where("order_id = ?", existingOrder.ID).Delete(&OrderItem{}).Error; err != nil {
-		s.logger.Errorw("error deleting order", err)
+	inventories, err := s.inventoryService.GetMultiple(ctx, ids)
+	if err != nil {
+		s.logger.Errorw("error getting inventory", "error", err, "id", ids)
 		return err
 	}
-	if len(updatedItems) > 0 {
-		if err := tx.Create(&updatedItems).Error; err != nil {
-			s.logger.Errorw("error deleting order", err)
+
+	var lockedProducts []string
+	for _, productID := range ids {
+		redisKey := s.getLockProductKey(productID)
+		lock := s.redisClient.SetNX(ctx, redisKey, "locked", 5*time.Second)
+		if !lock.Val() {
+			s.logger.Errorw("stock update in progress", "productID", productID)
+			return fmt.Errorf("stock update in progress for product %d", productID)
+		}
+		lockedProducts = append(lockedProducts, redisKey)
+	}
+
+	defer func() {
+		for _, key := range lockedProducts {
+			s.redisClient.Del(ctx, key)
+		}
+	}()
+
+	existingUpdates := map[uint]int{}
+	for _, item := range existingOrder.Items {
+		existingUpdates[item.ProductID] = item.Quantity
+	}
+	if err := s.inventoryService.IncreaseStockBulk(ctx, existingUpdates); err != nil {
+		s.logger.Errorw("error increasing stock bulk", "error", err, "id", existingOrder.ID)
+		return err
+	}
+
+	for _, item := range request.Items {
+		if inventories[item.ProductID].Stock < item.Quantity {
+			s.logger.Errorw("not enough stock for product %d", item.ProductID)
+			return fmt.Errorf("not enough stock for product %d", item.ProductID)
+		}
+	}
+
+	updatedUpdates := map[uint]int{}
+	for _, item := range existingOrder.Items {
+		updatedUpdates[item.ProductID] = item.Quantity
+	}
+	if err := s.inventoryService.DecreaseStockBulk(ctx, updatedUpdates); err != nil {
+		s.logger.Errorw("error decreasing stock", "error", err, "id", request.ID)
+		return err
+	}
+
+	var removedItemIDs []uint
+	for _, item := range existingOrder.Items {
+		found := false
+		for _, updatedItem := range request.Items {
+			if item.ProductID == updatedItem.ProductID {
+				found = true
+				break
+			}
+		}
+		if !found {
+			removedItemIDs = append(removedItemIDs, item.ID)
+		}
+	}
+
+	if len(removedItemIDs) > 0 {
+		if err := s.store.DeleteOrderItems(ctx, removedItemIDs); err != nil {
+			s.logger.Errorw("error bulk deleting removed order items", "error", err, "orderItemIDs", removedItemIDs)
 			return err
 		}
 	}
 
-	return nil
+	existingOrder.Items = NewItems(request.Items)
+	return s.store.Update(ctx, existingOrder)
+}
+
+func (s *service) Get(ctx context.Context, id uint) (*Order, error) {
+	return s.store.Get(ctx, id)
+}
+
+func (s *service) Delete(ctx context.Context, id uint) error {
+	order, err := s.store.Get(ctx, id)
+	if err != nil {
+		s.logger.Errorw("failed to get order", "error", err, "id", id)
+		return fmt.Errorf("order not found: %w", err)
+	}
+
+	productIDs := make([]uint, len(order.Items))
+	for i, item := range order.Items {
+		productIDs[i] = item.ProductID
+	}
+
+	var lockedProducts []string
+	for _, productID := range productIDs {
+		redisKey := s.getLockProductKey(productID)
+		lock := s.redisClient.SetNX(ctx, redisKey, "locked", 5*time.Second)
+		if !lock.Val() {
+			s.logger.Errorw("stock update in progress", "productID", productID)
+			return fmt.Errorf("stock update in progress for product %d", productID)
+		}
+		lockedProducts = append(lockedProducts, redisKey)
+	}
+
+	defer func() {
+		for _, key := range lockedProducts {
+			s.redisClient.Del(ctx, key)
+		}
+	}()
+
+	updates := map[uint]int{}
+	for _, item := range order.Items {
+		updates[item.ProductID] = item.Quantity
+	}
+	if err := s.inventoryService.IncreaseStockBulk(ctx, updates); err != nil {
+		s.logger.Errorw("error increasing stock", "error", err, "id", id)
+		return err
+	}
+
+	var orderItemIDs []uint
+	for _, item := range order.Items {
+		orderItemIDs = append(orderItemIDs, item.ID)
+	}
+
+	if len(orderItemIDs) > 0 {
+		if err := s.store.DeleteOrderItems(ctx, orderItemIDs); err != nil {
+			s.logger.Errorw("error bulk deleting order items", "error", err, "orderItemIDs", orderItemIDs)
+			return err
+		}
+	}
+
+	return s.store.Delete(ctx, id)
+}
+
+func (s *service) getLockProductKey(productID uint) string {
+	return fmt.Sprintf("stock_lock_product_%d", productID)
 }

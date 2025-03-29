@@ -6,13 +6,11 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/fiber/v2/middleware/recover"
 	"github.com/p4xx07/order-service/app/domains/order"
-	"github.com/p4xx07/order-service/app/domains/product"
 	"net/http"
 )
 
 type App struct {
-	OrderHandler   order.IHandler
-	ProductHandler product.IHandler
+	OrderHandler order.IHandler
 }
 
 func (a *App) Routes() *fiber.App {
@@ -29,7 +27,6 @@ func (a *App) Routes() *fiber.App {
 	api := f.Group("/api/v1.0")
 
 	order.SetRoutes(api, a.OrderHandler)
-	product.SetRoutes(api, a.ProductHandler)
 
 	return f
 }

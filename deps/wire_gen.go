@@ -26,18 +26,18 @@ import (
 // Injectors from wire.go:
 
 func InjectApp(config *configuration.Configuration, logger *zap.SugaredLogger) (*app.App, error) {
+	client, err := InitRedisClient(config)
+	if err != nil {
+		return nil, err
+	}
 	db, err := ConnectDB(config)
 	if err != nil {
 		return nil, err
 	}
 	iStore := order.NewStore(db)
-	client, err := InitRedisClient(config)
-	if err != nil {
-		return nil, err
-	}
 	inventoryIStore := inventory.NewStore(db)
-	iService := inventory.NewService(client, inventoryIStore, config, logger)
-	orderIService := order.NewService(config, logger, iStore, iService)
+	iService := inventory.NewService(inventoryIStore, config, logger)
+	orderIService := order.NewService(client, config, logger, iStore, iService)
 	iHandler := order.NewHandler(orderIService, logger)
 	appApp := &app.App{
 		OrderHandler: iHandler,

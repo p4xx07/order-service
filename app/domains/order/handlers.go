@@ -6,11 +6,9 @@ import (
 	"gopkg.in/validator.v2"
 	"net/http"
 	"strconv"
-	"time"
 )
 
 type IHandler interface {
-	List(ctx *fiber.Ctx) error
 	Post(ctx *fiber.Ctx) error
 	Get(ctx *fiber.Ctx) error
 	Put(ctx *fiber.Ctx) error
@@ -27,7 +25,7 @@ func NewHandler(service IService, logger *zap.SugaredLogger) IHandler {
 }
 
 func (h *handler) Post(c *fiber.Ctx) error {
-	var request postRequest
+	var request PostRequest
 	if err := c.BodyParser(&request); err != nil {
 		h.logger.Errorf("bodyRequest error %v | %v", request, err.Error())
 		return c.Status(http.StatusBadRequest).JSON(err)
@@ -37,50 +35,8 @@ func (h *handler) Post(c *fiber.Ctx) error {
 		return c.Status(http.StatusBadRequest).JSON(errs)
 	}
 
-	response, err := h.service.Create(request)
+	response, err := h.service.Create(c.Context(), request)
 	if err != nil {
-		return c.Status(http.StatusInternalServerError).JSON(err)
-	}
-
-	return c.Status(http.StatusOK).JSON(response)
-}
-
-func (h *handler) List(c *fiber.Ctx) error {
-	startDate := c.Query("start_date")
-	endDate := c.Query("end_date")
-	name := c.Query("name")
-	description := c.Query("description")
-	limitString := c.Query("limit", "10")
-	offsetString := c.Query("offset", "0")
-
-	var start, end time.Time
-	var err error
-	if startDate != "" {
-		start, err = time.Parse(time.RFC3339, startDate)
-		if err != nil {
-			return c.Status(http.StatusBadRequest).JSON("Invalid start_date format")
-		}
-	}
-	if endDate != "" {
-		end, err = time.Parse(time.RFC3339, endDate)
-		if err != nil {
-			return c.Status(http.StatusBadRequest).JSON("Invalid end_date format")
-		}
-	}
-
-	limit, err := strconv.ParseInt(limitString, 10, 64)
-	if err != nil {
-		return c.Status(http.StatusBadRequest).JSON("Invalid limit format")
-	}
-
-	offset, err := strconv.ParseInt(offsetString, 10, 64)
-	if err != nil {
-		return c.Status(http.StatusBadRequest).JSON("Invalid offset format")
-	}
-
-	response, err := h.service.List(start, end, name, description, limit, offset)
-	if err != nil {
-		h.logger.Errorf("List error: %v", err.Error())
 		return c.Status(http.StatusInternalServerError).JSON(err)
 	}
 
@@ -94,7 +50,7 @@ func (h *handler) Get(c *fiber.Ctx) error {
 		return c.Status(http.StatusBadRequest).JSON(err)
 	}
 
-	response, err := h.service.Get(uint(orderID))
+	response, err := h.service.Get(c.Context(), uint(orderID))
 	if err != nil {
 		h.logger.Errorf("Get order error: %v", err.Error())
 		return c.Status(http.StatusNotFound).JSON("Order not found")
@@ -110,7 +66,7 @@ func (h *handler) Put(c *fiber.Ctx) error {
 		return c.Status(http.StatusBadRequest).JSON(err)
 	}
 
-	var request putRequest
+	var request PutRequest
 	if err := c.BodyParser(&request); err != nil {
 		h.logger.Errorf("bodyRequest error: %v", err.Error())
 		return c.Status(http.StatusBadRequest).JSON("Invalid request body")
@@ -120,7 +76,8 @@ func (h *handler) Put(c *fiber.Ctx) error {
 		return c.Status(http.StatusBadRequest).JSON(errs)
 	}
 
-	err = h.service.Update(uint(orderID), request)
+	request.ID = uint(orderID)
+	err = h.service.Update(c.Context(), request)
 	if err != nil {
 		h.logger.Errorf("Update error: %v", err.Error())
 		return c.Status(http.StatusInternalServerError).JSON("Failed to update order")
@@ -136,11 +93,11 @@ func (h *handler) Delete(c *fiber.Ctx) error {
 		return c.Status(http.StatusBadRequest).JSON(err)
 	}
 
-	err = h.service.Delete(uint(orderID))
+	err = h.service.Delete(c.Context(), uint(orderID))
 	if err != nil {
 		h.logger.Errorf("Delete error: %v", err.Error())
 		return c.Status(http.StatusInternalServerError).JSON("Failed to delete order")
 	}
 
-	return c.Status(http.StatusOK).JSON("Order deleted successfully")
+	return c.SendStatus(http.StatusOK)
 }

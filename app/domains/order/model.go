@@ -1,6 +1,9 @@
 package order
 
-import "time"
+import (
+	"github.com/p4xx07/order-service/app/domains/product"
+	"time"
+)
 
 type Order struct {
 	ID        uint        `gorm:"primaryKey;autoIncrement"`
@@ -22,14 +25,15 @@ func NewOrder(userID uint, items []OrderItem) *Order {
 }
 
 type OrderItem struct {
-	ID        uint    `gorm:"primaryKey;autoIncrement"`
-	OrderID   uint    `gorm:"index"`
-	ProductID uint    `gorm:"index"`
-	Quantity  int     `gorm:"type:int;not null"`
-	Price     float64 `gorm:"type:decimal(10,2);not null"`
+	ID        uint            `gorm:"primaryKey;autoIncrement"`
+	OrderID   uint            `gorm:"index"`
+	ProductID uint            `gorm:"index"`
+	Quantity  int             `gorm:"type:int;not null"`
+	Price     float64         `gorm:"type:decimal(10,2);not null"`
+	Product   product.Product `gorm:"foreignKey:ProductID;constraint:OnDelete:CASCADE"`
 }
 
-func NewItems(items []orderItemRequest) []OrderItem {
+func NewItems(items []OrderItemRequest) []OrderItem {
 	response := make([]OrderItem, len(items))
 	for i, item := range items {
 		response[i] = OrderItem{
