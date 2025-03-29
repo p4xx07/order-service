@@ -94,7 +94,12 @@ func (s *service) Create(ctx context.Context, request PostRequest) (*CreateOrder
 	}
 
 	go func() {
-		err = s.meilisearchService.Update(*order)
+		order, err = s.store.Get(ctx, order.ID)
+		if err != nil {
+			s.logger.Errorw("failed to get order", "error", err)
+		}
+
+		err = s.meilisearchService.Add(*order)
 		if err != nil {
 			s.logger.Errorw("failed to update order", "error", err)
 		}
@@ -199,6 +204,11 @@ func (s *service) Update(ctx context.Context, request PutRequest) error {
 	}
 
 	go func() {
+		existingOrder, err = s.store.Get(ctx, existingOrder.ID)
+		if err != nil {
+			s.logger.Errorw("failed to get order", "error", err)
+		}
+
 		err = s.meilisearchService.Update(*existingOrder)
 		if err != nil {
 			s.logger.Errorw("failed to update order", "error", err)

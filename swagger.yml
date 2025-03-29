@@ -1,0 +1,129 @@
+openapi: 3.0.0
+info:
+  title: order-service
+  version: 1.0.0
+servers:
+  - url: http://localhost:8080
+components:
+  securitySchemes:
+    noauthAuth:
+      type: http
+      scheme: noauth
+paths:
+  /api/v1.0/order/:
+    post:
+      tags:
+        - default
+      summary: Create Order
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              example:
+                user_id: 1
+                items:
+                  - product_id: 4
+                    quantity: 20
+                  - product_id: 5
+                    quantity: 30
+      parameters:
+        - name: Content-Type
+          in: header
+          schema:
+            type: string
+          example: application/json
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/v1.0/order/13:
+    get:
+      tags:
+        - default
+      summary: Get Order
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+    put:
+      tags:
+        - default
+      summary: Update Order
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              example:
+                items:
+                  - product_id: 4
+                    quantity: 10
+                  - product_id: 5
+                    quantity: 15
+      parameters:
+        - name: Content-Type
+          in: header
+          schema:
+            type: string
+          example: application/json
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/v1.0/order/1:
+    delete:
+      tags:
+        - default
+      summary: Delete Order
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/v1.0/order:
+    get:
+      tags:
+        - default
+      summary: List Orders
+      security:
+        - noauthAuth: []
+      parameters:
+        - name: Authorization
+          in: header
+          schema:
+            type: string
+          example: Bearer your-api-key
+        - name: Content-Type
+          in: header
+          schema:
+            type: string
+          example: application/json
+        - name: start_date
+          in: query
+          schema:
+            type: string
+          example: '2023-01-01T10:10:10Z'
+        - name: end_date
+          in: query
+          schema:
+            type: string
+          example: '2025-01-01T10:10:10Z'
+        - name: limit
+          in: query
+          schema:
+            type: integer
+          example: '10'
+        - name: offset
+          in: query
+          schema:
+            type: integer
+          example: '0'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}

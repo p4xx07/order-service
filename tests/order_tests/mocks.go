@@ -69,6 +69,11 @@ type MockService struct {
 	mock.Mock
 }
 
+func (m *MockService) List(ctx context.Context, request order.ListRequest) (interface{}, error) {
+	args := m.Called(ctx, request)
+	return args.Get(0).(interface{}), args.Error(1)
+}
+
 func (m *MockService) Create(ctx context.Context, request order.PostRequest) (*order.CreateOrderResponse, error) {
 	args := m.Called(ctx, request)
 	return args.Get(0).(*order.CreateOrderResponse), args.Error(1)
@@ -99,6 +104,11 @@ func (m *MockMeilisearchService) List(ctx context.Context, request order.ListReq
 }
 
 func (m *MockMeilisearchService) Update(orders order.Order) error {
+	args := m.Called(orders)
+	return args.Error(0)
+}
+
+func (m *MockMeilisearchService) Add(orders order.Order) error {
 	args := m.Called(orders)
 	return args.Error(0)
 }

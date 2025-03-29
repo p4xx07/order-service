@@ -12,6 +12,7 @@ import (
 
 type IMeilisearchService interface {
 	List(ctx context.Context, request ListRequest) (interface{}, error)
+	Add(orders Order) error
 	Update(orders Order) error
 	Delete(orderIDs ...uint) error
 }
@@ -76,8 +77,31 @@ func (s *meilisearchService) Delete(orderIDs ...uint) error {
 		return nil
 	}
 
+	identifiers := make([]string, len(orderIDs))
+	for i, id := range orderIDs {
+		identifiers[i] = strconv.FormatUint(uint64(id), 10)
+	}
+
 	index := s.meilisearchClient.Index("orders")
-	_, err := index.Delete(strconv.Itoa(int(orderIDs[0])))
+	_, err := index.DeleteDocuments(identifiers)
+	if err != nil {
+		s.logger.Errorw("error while updating meilisearch", "error", err)
+		return err
+	}
+
+	return nil
+}
+
+func (s *meilisearchService) Add(order Order) error {
+	index := s.meilisearchClient.Index("orders")
+	attributes := s.getAttributes()
+	_, err := index.UpdateFilterableAttributes(&attributes)
+	if err != nil {
+		s.logger.Errorw("error while updating meilisearch", "error", err)
+		return err
+	}
+
+	_, err = index.AddDocuments(order.toDocument(), "ID")
 	if err != nil {
 		s.logger.Errorw("error while updating meilisearch", "error", err)
 		return err
@@ -95,7 +119,7 @@ func (s *meilisearchService) Update(order Order) error {
 		return err
 	}
 
-	_, err = index.AddDocuments(order.toDocument(), "ID")
+	_, err = index.UpdateDocuments(order.toDocument(), "ID")
 	if err != nil {
 		s.logger.Errorw("error while updating meilisearch", "error", err)
 		return err

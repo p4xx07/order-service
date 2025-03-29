@@ -1,0 +1,129 @@
+{
+	"info": {
+		"_postman_id": "86d775d9-0688-4303-918f-9f56f01c5079",
+		"name": "order-service",
+		"schema": "https://schema.getpostman.com/json/collection/v2.0.0/collection.json",
+		"_exporter_id": "27895218"
+	},
+	"item": [
+		{
+			"name": "Create Order",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"user_id\": 1,\n    \"items\": [\n        {\n            \"product_id\": 4,\n            \"quantity\": 20\n        },\n        {\n            \"product_id\": 5,\n            \"quantity\": 30\n        }\n    ]\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": "http://localhost:8080/api/v1.0/order/"
+			},
+			"response": []
+		},
+		{
+			"name": "Get Order",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": "http://localhost:8080/api/v1.0/order/13"
+			},
+			"response": []
+		},
+		{
+			"name": "Delete Order",
+			"request": {
+				"method": "DELETE",
+				"header": [],
+				"url": "http://localhost:8080/api/v1.0/order/1"
+			},
+			"response": []
+		},
+		{
+			"name": "Update Order",
+			"request": {
+				"method": "PUT",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"items\": [\n        {\n            \"product_id\": 4,\n            \"quantity\": 10\n        },\n        {\n            \"product_id\": 5,\n            \"quantity\": 15\n        }\n    ]\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": "http://localhost:8080/api/v1.0/order/13"
+			},
+			"response": []
+		},
+		{
+			"name": "List Orders",
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer your-api-key"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"url": {
+					"raw": "http://localhost:8080/api/v1.0/order?input=laptop&start_date=2025-03-29T12:30:00Z&end_date=2025-03-29T14:30:00Z&limit=10&offset=0",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"api",
+						"v1.0",
+						"order"
+					],
+					"query": [
+						{
+							"key": "input",
+							"value": "laptop"
+						},
+						{
+							"key": "start_date",
+							"value": "2025-03-29T12:30:00Z"
+						},
+						{
+							"key": "end_date",
+							"value": "2025-03-29T14:30:00Z"
+						},
+						{
+							"key": "limit",
+							"value": "10"
+						},
+						{
+							"key": "offset",
+							"value": "0"
+						}
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}
