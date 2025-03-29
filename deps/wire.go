@@ -23,7 +23,7 @@ import (
 
 func InjectApp(config *configuration.Configuration, logger *zap.SugaredLogger) (*app.App, error) {
 	wire.Build(
-		//InitMeiliSearchClient,
+		InitMeiliSearchClient,
 		InitRedisClient,
 
 		// handlers
@@ -31,6 +31,7 @@ func InjectApp(config *configuration.Configuration, logger *zap.SugaredLogger) (
 
 		// services
 		order.NewService,
+		order.NewMeilisearchService,
 		inventory.NewService,
 
 		// stores
@@ -85,7 +86,10 @@ func InitRedisClient(configuration *configuration.Configuration) (*redis.Client,
 
 func InitMeiliSearchClient(configuration *configuration.Configuration) (meilisearch.ServiceManager, error) {
 	host := fmt.Sprintf("%s:%d", configuration.MeiliSearchHost, configuration.MeiliSearchPort)
-	client := meilisearch.New(host, meilisearch.WithAPIKey(configuration.MeiliSearchMasterKey))
+	client := meilisearch.New(
+		host,
+		meilisearch.WithAPIKey(configuration.MeiliSearchMasterKey),
+	)
 	index := client.Index("orders")
 	sortable := []string{"created_at"}
 	_, err := index.UpdateSortableAttributes(&sortable)

@@ -12,6 +12,7 @@ type IStore interface {
 	Update(ctx context.Context, order *Order) error
 	Delete(ctx context.Context, id uint) error
 	DeleteOrderItems(ctx context.Context, orderItemIDs []uint) error
+	Fetch(size int, offset int) ([]Order, error)
 }
 
 type store struct {
@@ -51,4 +52,19 @@ func (s *store) DeleteOrderItems(ctx context.Context, orderItemIDs []uint) error
 		return fmt.Errorf("failed to bulk delete order items: %w", err)
 	}
 	return nil
+}
+
+func (s *store) Fetch(size int, offset int) ([]Order, error) {
+	var orders []Order
+	err := s.db.
+		Preload("Items").
+		Preload("Items.Product").
+		Limit(size).
+		Offset(offset).
+		Find(&orders).
+		Error
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch orders: %w", err)
+	}
+	return orders, nil
 }

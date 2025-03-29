@@ -11,6 +11,11 @@ type MockStore struct {
 	mock.Mock
 }
 
+func (m *MockStore) Fetch(size int, offset int) ([]order.Order, error) {
+	args := m.Called(size, offset)
+	return args.Get(0).([]order.Order), args.Error(1)
+}
+
 func (m *MockStore) Get(ctx context.Context, id uint) (*order.Order, error) {
 	args := m.Called(ctx, id)
 	return args.Get(0).(*order.Order), args.Error(1)
@@ -81,5 +86,24 @@ func (m *MockService) Update(ctx context.Context, request order.PutRequest) erro
 
 func (m *MockService) Delete(ctx context.Context, id uint) error {
 	args := m.Called(ctx, id)
+	return args.Error(0)
+}
+
+type MockMeilisearchService struct {
+	mock.Mock
+}
+
+func (m *MockMeilisearchService) List(ctx context.Context, request order.ListRequest) (interface{}, error) {
+	args := m.Called(ctx, request)
+	return args.Get(0).(interface{}), args.Error(1)
+}
+
+func (m *MockMeilisearchService) Update(orders order.Order) error {
+	args := m.Called(orders)
+	return args.Error(0)
+}
+
+func (m *MockMeilisearchService) Delete(orderIDs ...uint) error {
+	args := m.Called(orderIDs)
 	return args.Error(0)
 }

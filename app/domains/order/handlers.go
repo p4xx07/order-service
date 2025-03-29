@@ -9,9 +9,11 @@ import (
 	"gorm.io/gorm"
 	"net/http"
 	"strconv"
+	"time"
 )
 
 type IHandler interface {
+	List(ctx *fiber.Ctx) error
 	Post(ctx *fiber.Ctx) error
 	Get(ctx *fiber.Ctx) error
 	Put(ctx *fiber.Ctx) error
@@ -52,7 +54,60 @@ func (h *handler) Post(c *fiber.Ctx) error {
 		return c.SendStatus(http.StatusInternalServerError)
 	}
 
-	return c.Status(http.StatusOK).JSON(response)
+	return http2.JSON(c, http.StatusOK, response, nil)
+}
+
+func (h *handler) List(c *fiber.Ctx) error {
+	input := c.Query("input")
+	startDateStr := c.Query("start_date")
+	endDateStr := c.Query("end_date")
+	limit := c.Query("limit")
+	offset := c.Query("offset")
+
+	var startDate, endDate time.Time
+	var err error
+
+	if startDateStr != "" {
+		startDate, err = time.Parse(time.RFC3339, startDateStr)
+		if err != nil {
+			h.logger.Error("Invalid start_date format: ", err)
+			return http2.JSON(c, http.StatusBadRequest, nil, err)
+		}
+	}
+
+	if endDateStr != "" {
+		endDate, err = time.Parse(time.RFC3339, endDateStr)
+		if err != nil {
+			h.logger.Error("Invalid end_date format: ", err)
+			return http2.JSON(c, http.StatusBadRequest, nil, err)
+		}
+	}
+
+	limitInt, err := strconv.ParseInt(limit, 10, 64)
+	if err != nil {
+		limitInt = 0
+	}
+
+	offsetInt, err := strconv.ParseInt(offset, 10, 64)
+	if err != nil {
+		offsetInt = 0
+	}
+
+	request := ListRequest{
+		Input:     input,
+		StartDate: startDate,
+		EndDate:   endDate,
+		Limit:     limitInt,
+		Offset:    offsetInt,
+	}
+
+	response, err := h.service.List(c.Context(), request)
+	if err != nil {
+		h.logger.Error(err)
+		return c.SendStatus(http.StatusInternalServerError)
+	}
+
+	return http2.JSON(c, http.StatusOK, response, nil)
 }
 
 func (h *handler) Get(c *fiber.Ctx) error {

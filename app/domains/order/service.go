@@ -11,6 +11,7 @@ import (
 )
 
 type IService interface {
+	List(ctx context.Context, request ListRequest) (interface{}, error)
 	Get(ctx context.Context, orderID uint) (*OrderResponse, error)
 	Create(ctx context.Context, request PostRequest) (*CreateOrderResponse, error)
 	Update(ctx context.Context, request PutRequest) error
@@ -18,15 +19,20 @@ type IService interface {
 }
 
 type service struct {
-	configuration    *configuration.Configuration
-	logger           *zap.SugaredLogger
-	store            IStore
-	inventoryService inventory.IService
-	redisClient      *redis.Client
+	configuration      *configuration.Configuration
+	logger             *zap.SugaredLogger
+	store              IStore
+	inventoryService   inventory.IService
+	redisClient        *redis.Client
+	meilisearchService IMeilisearchService
 }
 
-func NewService(redisClient *redis.Client, configuration *configuration.Configuration, logger *zap.SugaredLogger, store IStore, inventoryService inventory.IService) IService {
-	return &service{redisClient: redisClient, configuration: configuration, logger: logger, store: store, inventoryService: inventoryService}
+func NewService(meilisearchService IMeilisearchService, redisClient *redis.Client, configuration *configuration.Configuration, logger *zap.SugaredLogger, store IStore, inventoryService inventory.IService) IService {
+	return &service{meilisearchService: meilisearchService, redisClient: redisClient, configuration: configuration, logger: logger, store: store, inventoryService: inventoryService}
+}
+
+func (s *service) List(ctx context.Context, request ListRequest) (interface{}, error) {
+	return s.meilisearchService.List(ctx, request)
 }
 
 func (s *service) Create(ctx context.Context, request PostRequest) (*CreateOrderResponse, error) {
@@ -86,6 +92,13 @@ func (s *service) Create(ctx context.Context, request PostRequest) (*CreateOrder
 		s.logger.Errorw("failed to store order", "error", err)
 		return nil, err
 	}
+
+	go func() {
+		err = s.meilisearchService.Update(*order)
+		if err != nil {
+			s.logger.Errorw("failed to update order", "error", err)
+		}
+	}()
 
 	return &CreateOrderResponse{ID: order.ID}, nil
 }
@@ -178,7 +191,21 @@ func (s *service) Update(ctx context.Context, request PutRequest) error {
 	}
 
 	existingOrder.Items = orderItems
-	return s.store.Update(ctx, existingOrder)
+
+	err = s.store.Update(ctx, existingOrder)
+	if err != nil {
+		s.logger.Errorw("error updating order", "error", err, "id", request.ID)
+		return err
+	}
+
+	go func() {
+		err = s.meilisearchService.Update(*existingOrder)
+		if err != nil {
+			s.logger.Errorw("failed to update order", "error", err)
+		}
+	}()
+
+	return nil
 }
 
 func (s *service) Get(ctx context.Context, id uint) (*OrderResponse, error) {
@@ -240,7 +267,20 @@ func (s *service) Delete(ctx context.Context, id uint) error {
 		}
 	}
 
-	return s.store.Delete(ctx, id)
+	err = s.store.Delete(ctx, id)
+	if err != nil {
+		s.logger.Errorw("error deleting order", "error", err, "id", id)
+		return err
+	}
+
+	go func() {
+		err = s.meilisearchService.Delete(id)
+		if err != nil {
+			s.logger.Errorw("failed to update order", "error", err)
+		}
+	}()
+
+	return nil
 }
 
 func (s *service) getLockProductKey(productID uint) string {

@@ -16,6 +16,8 @@ import (
 func TestDelete(t *testing.T) {
 	mockStore := new(MockStore)
 	mockInventoryService := new(MockInventoryService)
+	mockMeilisearchService := new(MockMeilisearchService)
+
 	logger := zap.NewNop().Sugar()
 
 	orderID := uint(1)
@@ -40,7 +42,7 @@ func TestDelete(t *testing.T) {
 	mockClient.ExpectSetNX("stock_lock_product_2", "locked", 5*time.Second).SetVal(true)
 	mockClient.ExpectDel(mock.Anything).RedisNil()
 
-	service := order.NewService(mockRedisClient, &configuration.Configuration{}, logger, mockStore, mockInventoryService)
+	service := order.NewService(mockMeilisearchService, mockRedisClient, &configuration.Configuration{}, logger, mockStore, mockInventoryService)
 
 	err := service.Delete(context.Background(), orderID)
 
@@ -53,6 +55,7 @@ func TestDelete(t *testing.T) {
 func TestUpdate(t *testing.T) {
 	mockStore := new(MockStore)
 	mockInventoryService := new(MockInventoryService)
+	mockMeilisearchService := new(MockMeilisearchService)
 	logger := zap.NewNop().Sugar()
 
 	orderID := uint(1)
@@ -80,7 +83,7 @@ func TestUpdate(t *testing.T) {
 	mockClient.ExpectSetNX("stock_lock_product_2", "locked", 5*time.Second).SetVal(true)
 	mockClient.ExpectDel(mock.Anything).RedisNil()
 
-	service := order.NewService(mockRedisClient, &configuration.Configuration{}, logger, mockStore, mockInventoryService)
+	service := order.NewService(mockMeilisearchService, mockRedisClient, &configuration.Configuration{}, logger, mockStore, mockInventoryService)
 
 	err := service.Update(context.Background(), order.PutRequest{
 		ID: orderID,
@@ -99,6 +102,8 @@ func TestUpdate(t *testing.T) {
 func TestCreate(t *testing.T) {
 	mockStore := new(MockStore)
 	mockInventoryService := new(MockInventoryService)
+	mockMeilisearchService := new(MockMeilisearchService)
+
 	logger := zap.NewNop().Sugar()
 
 	mockStore.On("Create", mock.Anything, mock.Anything).Return(nil)
@@ -115,7 +120,7 @@ func TestCreate(t *testing.T) {
 	mockClient.ExpectSetNX("stock_lock_product_2", "locked", 5*time.Second).SetVal(true)
 	mockClient.ExpectDel(mock.Anything).RedisNil()
 
-	service := order.NewService(mockRedisClient, &configuration.Configuration{}, logger, mockStore, mockInventoryService)
+	service := order.NewService(mockMeilisearchService, mockRedisClient, &configuration.Configuration{}, logger, mockStore, mockInventoryService)
 
 	_, err := service.Create(context.Background(), order.PostRequest{
 		Items: []order.OrderItemRequest{

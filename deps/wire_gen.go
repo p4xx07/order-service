@@ -26,7 +26,7 @@ import (
 // Injectors from wire.go:
 
 func InjectApp(config *configuration.Configuration, logger *zap.SugaredLogger) (*app.App, error) {
-	client, err := InitRedisClient(config)
+	serviceManager, err := InitMeiliSearchClient(config)
 	if err != nil {
 		return nil, err
 	}
@@ -35,9 +35,14 @@ func InjectApp(config *configuration.Configuration, logger *zap.SugaredLogger) (
 		return nil, err
 	}
 	iStore := order.NewStore(db)
+	iMeilisearchService := order.NewMeilisearchService(serviceManager, config, logger, iStore)
+	client, err := InitRedisClient(config)
+	if err != nil {
+		return nil, err
+	}
 	inventoryIStore := inventory.NewStore(db)
 	iService := inventory.NewService(inventoryIStore, config, logger)
-	orderIService := order.NewService(client, config, logger, iStore, iService)
+	orderIService := order.NewService(iMeilisearchService, client, config, logger, iStore, iService)
 	iHandler := order.NewHandler(orderIService, logger)
 	appApp := &app.App{
 		OrderHandler: iHandler,

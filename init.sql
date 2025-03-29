@@ -23,7 +23,9 @@ CREATE TABLE IF NOT EXISTS products (
     name VARCHAR(100) NOT NULL,
     description TEXT,
     price DECIMAL(10, 2) NOT NULL,
-    category VARCHAR(50)
+    category VARCHAR(50),
+    created_at datetime DEFAULT current_timestamp(),
+    updated_at datetime DEFAULT current_timestamp() ON UPDATE current_timestamp()
 );
 
 -- Inserting sample product data
@@ -61,7 +63,8 @@ CREATE TABLE IF NOT EXISTS orders (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     user_id BIGINT UNSIGNED NOT NULL,
     status VARCHAR(50) DEFAULT 'Pending',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at datetime DEFAULT current_timestamp(),
+    updated_at datetime DEFAULT current_timestamp() ON UPDATE current_timestamp()
 );
 
 -- Inserting sample order data
