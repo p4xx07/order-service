@@ -47,13 +47,13 @@ func (s *service) Create(ctx context.Context, request PostRequest) (*CreateOrder
 		lock := s.redisClient.SetNX(ctx, redisKey, "locked", 5*time.Second)
 		if !lock.Val() {
 			s.logger.Errorw("stock update in progress", "productID", item.ProductID)
-			return nil, fmt.Errorf("stock update in progress for product %d", item.ProductID)
+			return nil, ErrStockUpdateInProgress
 		}
 		lockedProducts = append(lockedProducts, redisKey)
 
 		if inventories[item.ProductID].Stock < item.Quantity {
 			s.logger.Errorw("stock update in progress for product %d", item.ProductID)
-			return nil, fmt.Errorf("not enough stock for product %d", item.ProductID)
+			return nil, ErrNoStockAvailable
 		}
 	}
 
@@ -64,17 +64,23 @@ func (s *service) Create(ctx context.Context, request PostRequest) (*CreateOrder
 	}()
 
 	updates := map[uint]int{}
+	var orderItems []OrderItem
+
 	for _, item := range request.Items {
 		updates[item.ProductID] = item.Quantity
-	}
 
+		orderItems = append(orderItems, OrderItem{
+			ProductID: item.ProductID,
+			Quantity:  item.Quantity,
+			Price:     inventories[item.ProductID].Product.Price,
+		})
+	}
 	if err := s.inventoryService.DecreaseStockBulk(ctx, updates); err != nil {
 		s.logger.Errorw("failed to decrease stock bulk", "error", err)
 		return nil, err
 	}
 
-	items := NewItems(request.Items)
-	order := NewOrder(request.UserID, items)
+	order := NewOrder(request.UserID, orderItems)
 	err = s.store.Create(ctx, order)
 	if err != nil {
 		s.logger.Errorw("failed to store order", "error", err)
@@ -116,7 +122,7 @@ func (s *service) Update(ctx context.Context, request PutRequest) error {
 		lock := s.redisClient.SetNX(ctx, redisKey, "locked", 5*time.Second)
 		if !lock.Val() {
 			s.logger.Errorw("stock update in progress", "productID", productID)
-			return fmt.Errorf("stock update in progress for product %d", productID)
+			return ErrStockUpdateInProgress
 		}
 		lockedProducts = append(lockedProducts, redisKey)
 	}
@@ -131,49 +137,47 @@ func (s *service) Update(ctx context.Context, request PutRequest) error {
 	for _, item := range existingOrder.Items {
 		existingUpdates[item.ProductID] = item.Quantity
 	}
+
+	for _, item := range request.Items {
+		if inventories[item.ProductID].Stock+existingUpdates[item.ProductID] < item.Quantity {
+			s.logger.Errorw("not enough stock for product %d", item.ProductID)
+			return ErrNoStockAvailable
+		}
+	}
+
 	if err := s.inventoryService.IncreaseStockBulk(ctx, existingUpdates); err != nil {
 		s.logger.Errorw("error increasing stock bulk", "error", err, "id", existingOrder.ID)
 		return err
 	}
 
-	for _, item := range request.Items {
-		if inventories[item.ProductID].Stock < item.Quantity {
-			s.logger.Errorw("not enough stock for product %d", item.ProductID)
-			return fmt.Errorf("not enough stock for product %d", item.ProductID)
-		}
-	}
+	updates := map[uint]int{}
+	var orderItems []OrderItem
 
-	updatedUpdates := map[uint]int{}
-	for _, item := range existingOrder.Items {
-		updatedUpdates[item.ProductID] = item.Quantity
+	for _, item := range request.Items {
+		updates[item.ProductID] = item.Quantity
+
+		orderItems = append(orderItems, OrderItem{
+			ProductID: item.ProductID,
+			Quantity:  item.Quantity,
+			Price:     inventories[item.ProductID].Product.Price,
+		})
 	}
-	if err := s.inventoryService.DecreaseStockBulk(ctx, updatedUpdates); err != nil {
+	if err := s.inventoryService.DecreaseStockBulk(ctx, updates); err != nil {
 		s.logger.Errorw("error decreasing stock", "error", err, "id", request.ID)
 		return err
 	}
 
-	var removedItemIDs []uint
-	for _, item := range existingOrder.Items {
-		found := false
-		for _, updatedItem := range request.Items {
-			if item.ProductID == updatedItem.ProductID {
-				found = true
-				break
-			}
-		}
-		if !found {
-			removedItemIDs = append(removedItemIDs, item.ID)
-		}
+	toDelete := make([]uint, len(existingOrder.Items))
+	for i, item := range existingOrder.Items {
+		toDelete[i] = item.ID
 	}
 
-	if len(removedItemIDs) > 0 {
-		if err := s.store.DeleteOrderItems(ctx, removedItemIDs); err != nil {
-			s.logger.Errorw("error bulk deleting removed order items", "error", err, "orderItemIDs", removedItemIDs)
-			return err
-		}
+	if err := s.store.DeleteOrderItems(ctx, toDelete); err != nil {
+		s.logger.Errorw("error deleting items", "error", err, "id", request.ID)
+		return err
 	}
 
-	existingOrder.Items = NewItems(request.Items)
+	existingOrder.Items = orderItems
 	return s.store.Update(ctx, existingOrder)
 }
 
@@ -204,7 +208,7 @@ func (s *service) Delete(ctx context.Context, id uint) error {
 		lock := s.redisClient.SetNX(ctx, redisKey, "locked", 5*time.Second)
 		if !lock.Val() {
 			s.logger.Errorw("stock update in progress", "productID", productID)
-			return fmt.Errorf("stock update in progress for product %d", productID)
+			return ErrStockUpdateInProgress
 		}
 		lockedProducts = append(lockedProducts, redisKey)
 	}

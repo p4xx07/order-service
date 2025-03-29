@@ -23,7 +23,9 @@ func NewStore(db *gorm.DB) IStore {
 
 func (s *store) GetMultiple(ctx context.Context, productIDs []uint) (map[uint]Inventory, error) {
 	var inventories []Inventory
-	result := s.db.WithContext(ctx).Where("product_id IN (?)", productIDs).Find(&inventories)
+	result := s.db.WithContext(ctx).
+		Preload("Product").
+		Where("product_id IN (?)", productIDs).Find(&inventories)
 	if result.Error != nil {
 		return nil, result.Error
 	}
@@ -40,6 +42,7 @@ func (s *store) Get(ctx context.Context, productID uint) (*Inventory, error) {
 	var result Inventory
 	query := s.db.
 		WithContext(ctx).
+		Preload("Product").
 		First(&result, "product_id = ?", productID)
 
 	if query.Error != nil {

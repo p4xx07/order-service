@@ -8,9 +8,9 @@ import (
 
 type IService interface {
 	Get(ctx context.Context, productID uint) (*Inventory, error)
-	GetMultiple(ctx context.Context, productIDs []uint) (map[uint]Inventory, error) // New function
-	DecreaseStockBulk(ctx context.Context, updates map[uint]int) error              // New function
-	IncreaseStockBulk(ctx context.Context, updates map[uint]int) error              // New function
+	GetMultiple(ctx context.Context, productIDs []uint) (map[uint]Inventory, error)
+	DecreaseStockBulk(ctx context.Context, updates map[uint]int) error
+	IncreaseStockBulk(ctx context.Context, updates map[uint]int) error
 }
 
 type service struct {

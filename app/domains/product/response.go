@@ -3,11 +3,11 @@ package product
 import "time"
 
 type ProductResponse struct {
-	ID          uint      `gorm:"primaryKey;autoIncrement"`
-	Name        string    `gorm:"type:varchar(100);not null"`
-	Description string    `gorm:"type:text"`
-	Price       float64   `gorm:"type:decimal(10,2);not null"`
-	CreatedAt   time.Time `gorm:"autoCreateTime"`
+	ID          uint      `json:"id,omitempty"`
+	Name        string    `json:"name,omitempty"`
+	Description string    `json:"description,omitempty"`
+	Price       float64   `json:"price,omitempty"`
+	CreatedAt   time.Time `json:"created_at"`
 }
 
 func (p *Product) ToResponse() ProductResponse {

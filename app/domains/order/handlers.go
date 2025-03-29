@@ -1,9 +1,12 @@
 package order
 
 import (
+	"errors"
 	"github.com/gofiber/fiber/v2"
+	http2 "github.com/p4xx07/order-service/internal/http"
 	"go.uber.org/zap"
 	"gopkg.in/validator.v2"
+	"gorm.io/gorm"
 	"net/http"
 	"strconv"
 )
@@ -37,7 +40,16 @@ func (h *handler) Post(c *fiber.Ctx) error {
 
 	response, err := h.service.Create(c.Context(), request)
 	if err != nil {
-		return c.Status(http.StatusInternalServerError).JSON(err)
+		if errors.Is(err, ErrNoStockAvailable) {
+			return http2.JSON(c, http.StatusInternalServerError, nil, err)
+		}
+
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return http2.JSON(c, http.StatusNotFound, nil, err)
+		}
+
+		h.logger.Error(err)
+		return c.SendStatus(http.StatusInternalServerError)
 	}
 
 	return c.Status(http.StatusOK).JSON(response)
@@ -52,11 +64,14 @@ func (h *handler) Get(c *fiber.Ctx) error {
 
 	response, err := h.service.Get(c.Context(), uint(orderID))
 	if err != nil {
-		h.logger.Errorf("Get order error: %v", err.Error())
-		return c.Status(http.StatusNotFound).JSON("Order not found")
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return http2.JSON(c, http.StatusNotFound, nil, err)
+		}
+		h.logger.Error(err)
+		return c.SendStatus(http.StatusInternalServerError)
 	}
 
-	return c.Status(http.StatusOK).JSON(response)
+	return http2.JSON(c, http.StatusOK, response, err)
 }
 
 func (h *handler) Put(c *fiber.Ctx) error {
@@ -67,6 +82,7 @@ func (h *handler) Put(c *fiber.Ctx) error {
 	}
 
 	var request PutRequest
+	request.ID = uint(orderID)
 	if err := c.BodyParser(&request); err != nil {
 		h.logger.Errorf("bodyRequest error: %v", err.Error())
 		return c.Status(http.StatusBadRequest).JSON("Invalid request body")
@@ -76,11 +92,17 @@ func (h *handler) Put(c *fiber.Ctx) error {
 		return c.Status(http.StatusBadRequest).JSON(errs)
 	}
 
-	request.ID = uint(orderID)
 	err = h.service.Update(c.Context(), request)
 	if err != nil {
-		h.logger.Errorf("Update error: %v", err.Error())
-		return c.Status(http.StatusInternalServerError).JSON("Failed to update order")
+		if errors.Is(err, ErrNoStockAvailable) {
+			return http2.JSON(c, http.StatusInternalServerError, nil, err)
+		}
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return http2.JSON(c, http.StatusNotFound, nil, err)
+		}
+
+		h.logger.Error(err)
+		return c.SendStatus(http.StatusInternalServerError)
 	}
 
 	return c.SendStatus(http.StatusOK)
@@ -95,8 +117,15 @@ func (h *handler) Delete(c *fiber.Ctx) error {
 
 	err = h.service.Delete(c.Context(), uint(orderID))
 	if err != nil {
-		h.logger.Errorf("Delete error: %v", err.Error())
-		return c.Status(http.StatusInternalServerError).JSON("Failed to delete order")
+		if errors.Is(err, ErrNoStockAvailable) {
+			return http2.JSON(c, http.StatusInternalServerError, nil, err)
+		}
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return http2.JSON(c, http.StatusNotFound, nil, err)
+		}
+
+		h.logger.Error(err)
+		return c.SendStatus(http.StatusInternalServerError)
 	}
 
 	return c.SendStatus(http.StatusOK)

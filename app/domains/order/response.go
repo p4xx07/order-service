@@ -32,9 +32,9 @@ func (o *Order) ToResponse() *OrderResponse {
 }
 
 type OrderItemResponse struct {
-	Quantity int                     `gorm:"type:int;not null"`
-	Price    float64                 `gorm:"type:decimal(10,2);not null"`
-	Product  product.ProductResponse `gorm:"foreignKey:ProductID;constraint:OnDelete:CASCADE"`
+	Quantity int                     `json:"quantity,omitempty"`
+	Price    float64                 `json:"price,omitempty"`
+	Product  product.ProductResponse `json:"product"`
 }
 
 func (o *OrderItem) ToResponse() OrderItemResponse {
