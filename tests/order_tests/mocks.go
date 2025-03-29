@@ -69,9 +69,9 @@ func (m *MockService) Create(ctx context.Context, request order.PostRequest) (*o
 	return args.Get(0).(*order.CreateOrderResponse), args.Error(1)
 }
 
-func (m *MockService) Get(ctx context.Context, id uint) (*order.Order, error) {
+func (m *MockService) Get(ctx context.Context, id uint) (*order.OrderResponse, error) {
 	args := m.Called(ctx, id)
-	return args.Get(0).(*order.Order), args.Error(1)
+	return args.Get(0).(*order.OrderResponse), args.Error(1)
 }
 
 func (m *MockService) Update(ctx context.Context, request order.PutRequest) error {

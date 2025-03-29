@@ -61,11 +61,11 @@ func TestHandler_Get(t *testing.T) {
 	handler := order.NewHandler(mockService, logger)
 
 	orderID := uint(1)
-	expectedResponse := &order.Order{
+	expectedResponse := &order.OrderResponse{
 		ID: orderID,
-		Items: []order.OrderItem{
-			{ProductID: 1, Quantity: 2, Price: 10.0},
-			{ProductID: 2, Quantity: 1, Price: 20.0},
+		Items: []order.OrderItemResponse{
+			{Quantity: 2, Price: 10.0},
+			{Quantity: 1, Price: 20.0},
 		},
 	}
 

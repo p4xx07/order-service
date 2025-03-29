@@ -11,7 +11,7 @@ import (
 )
 
 type IService interface {
-	Get(ctx context.Context, orderID uint) (*Order, error)
+	Get(ctx context.Context, orderID uint) (*OrderResponse, error)
 	Create(ctx context.Context, request PostRequest) (*CreateOrderResponse, error)
 	Update(ctx context.Context, request PutRequest) error
 	Delete(ctx context.Context, id uint) error
@@ -177,8 +177,13 @@ func (s *service) Update(ctx context.Context, request PutRequest) error {
 	return s.store.Update(ctx, existingOrder)
 }
 
-func (s *service) Get(ctx context.Context, id uint) (*Order, error) {
-	return s.store.Get(ctx, id)
+func (s *service) Get(ctx context.Context, id uint) (*OrderResponse, error) {
+	order, err := s.store.Get(ctx, id)
+	if err != nil {
+		s.logger.Errorw("error getting order", "error", err, "id", id)
+		return nil, err
+	}
+	return order.ToResponse(), nil
 }
 
 func (s *service) Delete(ctx context.Context, id uint) error {
