@@ -4,7 +4,6 @@ WORKDIR /go/src/app
 
 COPY ./go.mod .
 COPY ./go.sum .
-COPY ./.env .
 
 RUN go mod download
 
