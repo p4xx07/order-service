@@ -32,3 +32,19 @@ type OrderItem struct {
 	Price     float64         `gorm:"type:decimal(10,2);not null"`
 	Product   product.Product `gorm:"foreignKey:ProductID;constraint:OnDelete:CASCADE"`
 }
+
+type OrderMeilisearch struct {
+	Order
+	CreatedAtTimestamp int64 `gorm:"autoCreateTime"`
+}
+
+func (o *Order) toDocument() OrderMeilisearch {
+	if o == nil {
+		return OrderMeilisearch{}
+	}
+
+	return OrderMeilisearch{
+		Order:              *o,
+		CreatedAtTimestamp: o.CreatedAt.UnixMilli(),
+	}
+}

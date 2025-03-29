@@ -2,6 +2,7 @@ package order
 
 import (
 	"context"
+	"fmt"
 	"github.com/meilisearch/meilisearch-go"
 	"github.com/p4xx07/order-service/configuration"
 	"go.uber.org/zap"
@@ -42,8 +43,21 @@ func (s *meilisearchService) List(ctx context.Context, request ListRequest) (int
 		return nil, err
 	}
 
+	var filter string
+	if request.StartDate != nil && request.EndDate != nil {
+		startTimestamp := request.StartDate.UnixMilli()
+		endTimestamp := request.EndDate.UnixMilli()
+		filter = fmt.Sprintf("CreatedAtTimestamp >= %d AND CreatedAtTimestamp <= %d", startTimestamp, endTimestamp)
+	} else if request.StartDate != nil {
+		startTimestamp := request.StartDate.UnixMilli()
+		filter = fmt.Sprintf("CreatedAtTimestamp >= %d", startTimestamp)
+	} else if request.EndDate != nil {
+		endTimestamp := request.EndDate.UnixMilli()
+		filter = fmt.Sprintf("CreatedAtTimestamp <= %d", endTimestamp)
+	}
+
 	query := meilisearch.SearchRequest{
-		//Filter: filter,
+		Filter: filter,
 		Limit:  request.Limit,
 		Offset: request.Offset,
 	}
@@ -72,7 +86,7 @@ func (s *meilisearchService) Delete(orderIDs ...uint) error {
 	return nil
 }
 
-func (s *meilisearchService) Update(orders Order) error {
+func (s *meilisearchService) Update(order Order) error {
 	index := s.meilisearchClient.Index("orders")
 	attributes := s.getAttributes()
 	_, err := index.UpdateFilterableAttributes(&attributes)
@@ -81,7 +95,7 @@ func (s *meilisearchService) Update(orders Order) error {
 		return err
 	}
 
-	_, err = index.AddDocuments(orders, "ID")
+	_, err = index.AddDocuments(order.toDocument(), "ID")
 	if err != nil {
 		s.logger.Errorw("error while updating meilisearch", "error", err)
 		return err
@@ -116,7 +130,12 @@ func (s *meilisearchService) syncOrdersToMeili() {
 				break
 			}
 
-			_, err = index.AddDocuments(orders, "ID")
+			documents := make([]OrderMeilisearch, len(orders))
+			for i, order := range orders {
+				documents[i] = order.toDocument()
+			}
+
+			_, err = index.AddDocuments(documents, "ID")
 			if err != nil {
 				log.Println("Error syncing to Meilisearch:", err)
 				return
@@ -128,5 +147,5 @@ func (s *meilisearchService) syncOrdersToMeili() {
 }
 
 func (s *meilisearchService) getAttributes() []string {
-	return []string{"CreatedAt", "Items.Product.Name", "Items.Product.Description"}
+	return []string{"CreatedAtTimestamp", "Items.Product.Name", "Items.Product.Description"}
 }

@@ -3,11 +3,11 @@ package order
 import "time"
 
 type ListRequest struct {
-	Input     string    `json:"input,omitempty"`
-	StartDate time.Time `json:"start_date"`
-	EndDate   time.Time `json:"end_date"`
-	Limit     int64     `json:"limit,omitempty"`
-	Offset    int64     `json:"offset,omitempty"`
+	Input     string     `json:"input,omitempty"`
+	StartDate *time.Time `json:"start_date"`
+	EndDate   *time.Time `json:"end_date"`
+	Limit     int64      `json:"limit,omitempty"`
+	Offset    int64      `json:"offset,omitempty"`
 }
 
 type PostRequest struct {

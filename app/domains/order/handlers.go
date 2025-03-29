@@ -95,8 +95,8 @@ func (h *handler) List(c *fiber.Ctx) error {
 
 	request := ListRequest{
 		Input:     input,
-		StartDate: startDate,
-		EndDate:   endDate,
+		StartDate: &startDate,
+		EndDate:   &endDate,
 		Limit:     limitInt,
 		Offset:    offsetInt,
 	}
