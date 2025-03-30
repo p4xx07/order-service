@@ -25,15 +25,12 @@ type Configuration struct {
 }
 
 func GetEnvConfig() (*Configuration, error) {
-	var err error
 	environment := os.Getenv("ENVIRONMENT")
 	if environment != "" {
-		err = godotenv.Load(".env." + environment)
-	} else {
-		err = godotenv.Load()
-	}
-	if err != nil {
-		return nil, err
+		err := godotenv.Load(".env." + environment)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	cfg := Configuration{

@@ -137,6 +137,12 @@ func (s *meilisearchService) syncOrdersToMeili() {
 		return
 	}
 
+	_, err = index.UpdateSortableAttributes(&attributes)
+	if err != nil {
+		s.logger.Errorw("error while updating meilisearch", "error", err)
+		return
+	}
+
 	stats, err := index.GetStats()
 	if err != nil || stats.NumberOfDocuments == 0 {
 		log.Println("Meilisearch empty, starting sync...")

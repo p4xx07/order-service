@@ -86,12 +86,8 @@ func InitRedisClient(configuration2 *configuration.Configuration) (*redis.Client
 
 func InitMeiliSearchClient(configuration2 *configuration.Configuration) (meilisearch.ServiceManager, error) {
 	host := fmt.Sprintf("%s:%d", configuration2.MeiliSearchHost, configuration2.MeiliSearchPort)
-	client := meilisearch.New(host, meilisearch.WithAPIKey(configuration2.MeiliSearchMasterKey))
-	index := client.Index("orders")
-	sortable := []string{"created_at"}
-	_, err := index.UpdateSortableAttributes(&sortable)
-	if err != nil {
-		return nil, err
-	}
+	client := meilisearch.New(
+		host, meilisearch.WithAPIKey(configuration2.MeiliSearchMasterKey),
+	)
 	return client, nil
 }
