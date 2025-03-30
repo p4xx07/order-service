@@ -94,14 +94,7 @@ func (s *meilisearchService) Delete(orderIDs ...uint) error {
 
 func (s *meilisearchService) Add(order Order) error {
 	index := s.meilisearchClient.Index("orders")
-	attributes := s.getAttributes()
-	_, err := index.UpdateFilterableAttributes(&attributes)
-	if err != nil {
-		s.logger.Errorw("error while updating meilisearch", "error", err)
-		return err
-	}
-
-	_, err = index.AddDocuments(order.toDocument(), "ID")
+	_, err := index.AddDocuments(order.toDocument(), "ID")
 	if err != nil {
 		s.logger.Errorw("error while updating meilisearch", "error", err)
 		return err
@@ -112,14 +105,7 @@ func (s *meilisearchService) Add(order Order) error {
 
 func (s *meilisearchService) Update(order Order) error {
 	index := s.meilisearchClient.Index("orders")
-	attributes := s.getAttributes()
-	_, err := index.UpdateFilterableAttributes(&attributes)
-	if err != nil {
-		s.logger.Errorw("error while updating meilisearch", "error", err)
-		return err
-	}
-
-	_, err = index.UpdateDocuments(order.toDocument(), "ID")
+	_, err := index.UpdateDocuments(order.toDocument(), "ID")
 	if err != nil {
 		s.logger.Errorw("error while updating meilisearch", "error", err)
 		return err
@@ -167,7 +153,7 @@ func (s *meilisearchService) syncOrdersToMeili() {
 
 			_, err = index.AddDocuments(documents, "ID")
 			if err != nil {
-				log.Println("Error syncing to Meilisearch:", err)
+				s.logger.Error("Error syncing to Meilisearch:", err)
 				return
 			}
 

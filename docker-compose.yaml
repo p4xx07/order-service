@@ -27,6 +27,10 @@ services:
       - ./compose/data.ms:/data.ms
     ports:
       - "7700:7700"
+    healthcheck:
+      test: set -o pipefail;curl -fsS http://localhost:7700/health | grep -q '{"status":"available"}'
+      retries: 3
+      timeout: 5s
 
   redis:
       image: redis:7.2.4
@@ -51,7 +55,7 @@ services:
       DATABASE_HOST: db
       DATABASE_PORT: 3306
       DATABASE_NAME: test
-      MEILISEARCH_HOST: meilisearch
+      MEILISEARCH_HOST: http://meilisearch
       MEILISEARCH_PORT: 7700
       MEILISEARCH_MASTER_KEY: a-ArzKFISr1izZ5Ib_zqhIfWGU6x1Vxv4CnaGXFDJ-I
 
@@ -68,4 +72,4 @@ services:
       redis:
         condition: service_started
       meilisearch:
-        condition: service_started
+        condition: service_healthy

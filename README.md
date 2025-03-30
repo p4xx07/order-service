@@ -47,8 +47,6 @@ This starts the following services:
 - Meilisearch
 - Order Service
 
-The Order Service will start  once the database is healthy and the other 2 services have started
-
 ### **Stop the Service**
 ```sh
 docker-compose down
