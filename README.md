@@ -7,6 +7,7 @@ This is a microservice for managing customer orders. It provides APIs for creati
 - [Running the Service](#running-the-service)
 - [Environment Variables](#environment-variables)
 - [Database Initialization](#database-initialization)
+- [API](#api)
 - [Swagger](#swagger)
 
 
@@ -71,6 +72,49 @@ The database is initialized using an `init.sql` file, which is automatically exe
 To manually connect to the database:
 ```sh
 docker exec -it <mariadb-container-id> mysql -u root -p
+```
+
+## Api
+
+Post Create Order
+
+```sh 
+curl -X POST "http://localhost:8080/api/v1.0/order/" \
+     -H "Content-Type: application/json" \
+     -d '{
+        "user_id": 1,
+        "items": [
+            {"product_id": 4, "quantity": 20},
+            {"product_id": 5, "quantity": 30}
+        ]
+     }'
+```
+
+Get Order
+```sh
+curl -X GET "http://localhost:8080/api/v1.0/order/1"
+```
+
+Delete Order
+
+```sh
+curl -X DELETE "http://localhost:8080/api/v1.0/order/1"
+```
+
+Update Order
+```sh
+curl -X PUT "http://localhost:8080/api/v1.0/order/1" \
+    -H "Content-Type: application/json" \
+    -d '{
+      "items": [
+        {"product_id": 4, "quantity": 10},
+        {"product_id": 5, "quantity": 15}]
+    }'
+```
+
+List Order
+```sh
+curl -X GET "http://localhost:8080/api/v1.0/order?input=laptop&start_date=2025-03-29T12:30:00Z&end_date=2025-05-29T14:30:00Z&limit=10&offset=0" \
 ```
 
 ## Swagger
