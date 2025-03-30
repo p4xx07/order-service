@@ -119,6 +119,12 @@ curl -X GET "http://localhost:8080/api/v1.0/order?input=laptop&start_date=2025-0
 
 ## Swagger
 
+The swagger service is available on port 8081
+
+```sh
+http://localhost:8081/
+```
+
 To generate the swagger use this to convert the postman apis to swagger
 and run the swaggen.sh
 

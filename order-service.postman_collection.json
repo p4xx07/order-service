@@ -7,66 +7,11 @@
 	},
 	"item": [
 		{
-			"name": "Create Order",
-			"request": {
-				"method": "POST",
-				"header": [
-					{
-						"key": "Content-Type",
-						"value": "application/json"
-					}
-				],
-				"body": {
-					"mode": "raw",
-					"raw": "{\n    \"user_id\": 1,\n    \"items\": [\n        {\n            \"product_id\": 4,\n            \"quantity\": 20\n        },\n        {\n            \"product_id\": 5,\n            \"quantity\": 30\n        }\n    ]\n}",
-					"options": {
-						"raw": {
-							"language": "json"
-						}
-					}
-				},
-				"url": "http://localhost:8080/api/v1.0/order/"
-			},
-			"response": []
-		},
-		{
 			"name": "Get Order",
 			"request": {
 				"method": "GET",
 				"header": [],
-				"url": "http://localhost:8080/api/v1.0/order/13"
-			},
-			"response": []
-		},
-		{
-			"name": "Delete Order",
-			"request": {
-				"method": "DELETE",
-				"header": [],
 				"url": "http://localhost:8080/api/v1.0/order/1"
-			},
-			"response": []
-		},
-		{
-			"name": "Update Order",
-			"request": {
-				"method": "PUT",
-				"header": [
-					{
-						"key": "Content-Type",
-						"value": "application/json"
-					}
-				],
-				"body": {
-					"mode": "raw",
-					"raw": "{\n    \"items\": [\n        {\n            \"product_id\": 4,\n            \"quantity\": 10\n        },\n        {\n            \"product_id\": 5,\n            \"quantity\": 15\n        }\n    ]\n}",
-					"options": {
-						"raw": {
-							"language": "json"
-						}
-					}
-				},
-				"url": "http://localhost:8080/api/v1.0/order/13"
 			},
 			"response": []
 		},
@@ -78,10 +23,6 @@
 				},
 				"method": "GET",
 				"header": [
-					{
-						"key": "Authorization",
-						"value": "Bearer your-api-key"
-					},
 					{
 						"key": "Content-Type",
 						"value": "application/json"
@@ -122,6 +63,61 @@
 						}
 					]
 				}
+			},
+			"response": []
+		},
+		{
+			"name": "Create Order",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"user_id\": 1,\n    \"items\": [\n        {\n            \"product_id\": 4,\n            \"quantity\": 20\n        },\n        {\n            \"product_id\": 5,\n            \"quantity\": 30\n        }\n    ]\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": "http://localhost:8080/api/v1.0/order/"
+			},
+			"response": []
+		},
+		{
+			"name": "Update Order",
+			"request": {
+				"method": "PUT",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"items\": [\n        {\n            \"product_id\": 4,\n            \"quantity\": 10\n        },\n        {\n            \"product_id\": 5,\n            \"quantity\": 15\n        }\n    ]\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": "http://localhost:8080/api/v1.0/order/1"
+			},
+			"response": []
+		},
+		{
+			"name": "Delete Order",
+			"request": {
+				"method": "DELETE",
+				"header": [],
+				"url": "http://localhost:8080/api/v1.0/order/1"
 			},
 			"response": []
 		}

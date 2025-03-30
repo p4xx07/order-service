@@ -10,35 +10,7 @@ components:
       type: http
       scheme: noauth
 paths:
-  /api/v1.0/order/:
-    post:
-      tags:
-        - default
-      summary: Create Order
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              example:
-                user_id: 1
-                items:
-                  - product_id: 4
-                    quantity: 20
-                  - product_id: 5
-                    quantity: 30
-      parameters:
-        - name: Content-Type
-          in: header
-          schema:
-            type: string
-          example: application/json
-      responses:
-        '200':
-          description: Successful response
-          content:
-            application/json: {}
-  /api/v1.0/order/13:
+  /api/v1.0/order/1:
     get:
       tags:
         - default
@@ -74,7 +46,6 @@ paths:
           description: Successful response
           content:
             application/json: {}
-  /api/v1.0/order/1:
     delete:
       tags:
         - default
@@ -92,11 +63,6 @@ paths:
       security:
         - noauthAuth: []
       parameters:
-        - name: Authorization
-          in: header
-          schema:
-            type: string
-          example: Bearer your-api-key
         - name: Content-Type
           in: header
           schema:
@@ -127,6 +93,34 @@ paths:
           schema:
             type: integer
           example: '0'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/v1.0/order/:
+    post:
+      tags:
+        - default
+      summary: Create Order
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              example:
+                user_id: 1
+                items:
+                  - product_id: 4
+                    quantity: 20
+                  - product_id: 5
+                    quantity: 30
+      parameters:
+        - name: Content-Type
+          in: header
+          schema:
+            type: string
+          example: application/json
       responses:
         '200':
           description: Successful response
