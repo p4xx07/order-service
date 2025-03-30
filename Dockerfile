@@ -9,9 +9,9 @@ RUN go mod download
 
 COPY . .
 
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w"  -o order-service ./main.go
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=$(go env GOARCH) go build -ldflags="-s -w"  -o order-service ./main.go
 
-FROM phusion/baseimage:focal-1.2.0
+FROM alpine:latest
 
 WORKDIR /app
 
