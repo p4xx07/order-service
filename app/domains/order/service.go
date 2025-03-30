@@ -48,6 +48,13 @@ func (s *service) Create(ctx context.Context, request PostRequest) (*CreateOrder
 	}
 
 	var lockedProducts []string
+
+	defer func() {
+		for _, key := range lockedProducts {
+			s.redisClient.Del(ctx, key)
+		}
+	}()
+
 	for _, item := range request.Items {
 		redisKey := s.getLockProductKey(item.ProductID)
 		lock := s.redisClient.SetNX(ctx, redisKey, "locked", 5*time.Second)
@@ -62,12 +69,6 @@ func (s *service) Create(ctx context.Context, request PostRequest) (*CreateOrder
 			return nil, ErrNoStockAvailable
 		}
 	}
-
-	defer func() {
-		for _, key := range lockedProducts {
-			s.redisClient.Del(ctx, key)
-		}
-	}()
 
 	updates := map[uint]int{}
 	var orderItems []OrderItem
@@ -135,6 +136,13 @@ func (s *service) Update(ctx context.Context, request PutRequest) error {
 	}
 
 	var lockedProducts []string
+
+	defer func() {
+		for _, key := range lockedProducts {
+			s.redisClient.Del(ctx, key)
+		}
+	}()
+
 	for _, productID := range ids {
 		redisKey := s.getLockProductKey(productID)
 		lock := s.redisClient.SetNX(ctx, redisKey, "locked", 5*time.Second)
@@ -144,12 +152,6 @@ func (s *service) Update(ctx context.Context, request PutRequest) error {
 		}
 		lockedProducts = append(lockedProducts, redisKey)
 	}
-
-	defer func() {
-		for _, key := range lockedProducts {
-			s.redisClient.Del(ctx, key)
-		}
-	}()
 
 	existingUpdates := map[uint]int{}
 	for _, item := range existingOrder.Items {
@@ -240,6 +242,13 @@ func (s *service) Delete(ctx context.Context, id uint) error {
 	}
 
 	var lockedProducts []string
+
+	defer func() {
+		for _, key := range lockedProducts {
+			s.redisClient.Del(ctx, key)
+		}
+	}()
+
 	for _, productID := range productIDs {
 		redisKey := s.getLockProductKey(productID)
 		lock := s.redisClient.SetNX(ctx, redisKey, "locked", 5*time.Second)
@@ -249,12 +258,6 @@ func (s *service) Delete(ctx context.Context, id uint) error {
 		}
 		lockedProducts = append(lockedProducts, redisKey)
 	}
-
-	defer func() {
-		for _, key := range lockedProducts {
-			s.redisClient.Del(ctx, key)
-		}
-	}()
 
 	updates := map[uint]int{}
 	for _, item := range order.Items {

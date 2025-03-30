@@ -22,7 +22,7 @@ type PutRequest struct {
 
 type OrderItemRequest struct {
 	ProductID uint `json:"product_id,omitempty" validate:"min=1,nonnil" required:"true"`
-	Quantity  int  `json:"quantity,omitempty"`
+	Quantity  int  `json:"quantity,omitempty" validate:"min=1,nonnil" required:"true"`
 }
 
 func (o OrderItemRequest) ToStore(orderID uint) OrderItem {
