@@ -22,6 +22,19 @@ On startup, the service synchronizes existing order data with Meilisearch to ens
 ### **Prerequisites**
 - [Docker](https://www.docker.com/get-started)
 - [Docker Compose](https://docs.docker.com/compose/)
+- [Wire](https://github.com/google/wire) (for dependency injection)
+
+### **Generate Wire Dependencies**
+
+Install wire
+```sh
+go install github.com/google/wire/cmd/wire@latest
+```
+
+To create the dependency injection file launch:
+```sh
+./wiregen.sh
+```
 
 ### **Start the Service**
 ```sh
