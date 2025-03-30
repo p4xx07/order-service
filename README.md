@@ -25,6 +25,7 @@ On startup, the service synchronizes existing order data with Meilisearch to ens
 - [Wire](https://github.com/google/wire) (for dependency injection)
 
 ### **Generate Wire Dependencies**
+The wire dependency injection files can be found in the deps folder.
 
 Install wire
 ```sh
