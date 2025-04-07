@@ -5,10 +5,10 @@ import (
 )
 
 func SetRoutes(router fiber.Router, handler IHandler) {
-	liveclip := router.Group("order")
-	liveclip.Get("/", handler.List)
-	liveclip.Post("/", handler.Post)
-	liveclip.Get("/:id", handler.Get)
-	liveclip.Put("/:id", handler.Put)
-	liveclip.Delete("/:id", handler.Delete)
+	g := router.Group("order")
+	g.Get("/", handler.List)
+	g.Post("/", handler.Post)
+	g.Get("/:id", handler.Get)
+	g.Put("/:id", handler.Put)
+	g.Delete("/:id", handler.Delete)
 }
